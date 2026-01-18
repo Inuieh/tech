@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZAM Tech - Admin Dashboard</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+const { useState, useEffect } = React;
+
+const Settings = () => <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+const AlertCircle = () => <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+
+function AdminDashboard() {
+  const [adminPassword, setAdminPassword] = useState('');
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const ADMIN_PASSWORD = 'nixie88888888';
+
+  const storage = {
+    get: (key) => {
+      try {
+        const item = localStorage.getItem(key);
+        return item ? JSON.parse(item) : null;
+      } catch { return null; }
+    },
+    set: (key, value) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+      } catch { return false; }
+    },
+    delete: (key) => {
+      try {
+        localStorage.removeItem(key);
+        return true;
+      } catch { return false; }
+    },
+    list: (prefix) => {
+      try {
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key.startsWith(prefix)) keys.push(key);
+        }
+        return keys;
+      } catch { return []; }
+    }
+  };
+
+  useEffect(() => {
+    loadBookings();
+  }, []);
+
+  const loadBookings = () => {
+    try {
+      setLoading(true);
+      const keys = storage.list('booking:');
+      const all = keys.map(k => storage.get(k)).filter(Boolean);
+      setBookings(all.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)));
+    } catch (err) { 
+      console.error('Error loading bookings:', err); 
+    } finally { 
+      setLoading(false); 
+    }
+  };
+
+  const handleAdminLogin = () => {
+    if (adminPassword === ADMIN_PASSWORD) { 
+      setIsAdminLoggedIn(true); 
+      loadBookings(); 
+    } else {
+      alert('Incorrect password');
+    }
+  };
+
+  const updateStatus = (id, status) => {
+    try {
+      const booking = storage.get(`booking:${id}`);
+      if (booking) {
+        booking.status = status;
+        storage.set(`booking:${id}`, booking);
+        loadBookings();
+      }
+    } catch (err) { 
+      console.error('Error updating status:', err); 
+    }
+  };
+
+  const deleteBooking = (id) => {
+    if (window.confirm('Delete this booking?')) {
+      try { 
+        storage.delete(`booking:${id}`); 
+        loadBookings(); 
+      } catch (err) { 
+        console.error('Error deleting booking:', err); 
+      }
+    }
+  };
+
+  if (!isAdminLoggedIn) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-100 to-purple-100 p-4 flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+          <div className="flex justify-center mb-6"><Settings /></div>
+          <h2 className="text-2xl font-bold text-center mb-6">Admin Login</h2>
+          <input type="password" placeholder="Enter password" value={adminPassword}
+            onChange={e => setAdminPassword(e.target.value)}
+            onKeyPress={e => e.key === 'Enter' && handleAdminLogin()}
+            className="w-full p-3 border rounded-lg mb-4" />
+          <button onClick={handleAdminLogin} className="w-full bg-pink-500 text-white py-3 rounded-lg hover:bg-pink-600">
+            Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-pink-100 to-purple-100 p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-lg shadow-xl p-6 mb-6">
+          <div className="flex justify-between items-center flex-wrap gap-4">
+            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <div className="flex gap-2">
+              <button onClick={loadBookings} className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                Refresh
+              </button>
+              <button onClick={() => setIsAdminLoggedIn(false)} className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+                Logout
+              </button>
+            </div>
+          </div>
+          <p className="text-gray-600 mt-2">Total Bookings: {bookings.length}</p>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12">Loading...</div>
+        ) : bookings.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-xl p-12 text-center">
+            <div className="flex justify-center mb-4 text-gray-400"><AlertCircle /></div>
+            <p className="text-gray-600">No bookings yet</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {bookings.map(b => (
+              <div key={b.id} className="bg-white rounded-lg shadow-lg p-6">
+                <div className="flex justify-between mb-4 flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-xl font-bold">{b.name}</h3>
+                    <p className="text-sm text-gray-500">{new Date(b.timestamp).toLocaleString()}</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                    b.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                    b.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
+                    'bg-green-100 text-green-800'
+                  }`}>
+                    {b.status.toUpperCase()}
+                  </span>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Contact</p>
+                    <p className="font-semibold">{b.phone}</p>
+                    {b.email && <p className="text-sm">{b.email}</p>}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Device</p>
+                    <p className="font-semibold capitalize">{b.deviceType}</p>
+                    <p className="text-sm">{b.brand} {b.model}</p>
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600">Problems:</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {b.problems.map((p, i) => (
+                      <span key={i} className="bg-pink-100 text-pink-800 px-2 py-1 rounded text-sm">{p}</span>
+                    ))}
+                  </div>
+                </div>
+                {b.additionalNotes && (
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600">Notes:</p>
+                    <p className="bg-gray-50 p-2 rounded text-sm">{b.additionalNotes}</p>
+                  </div>
+                )}
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={() => updateStatus(b.id, 'pending')} 
+                    className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600">
+                    Pending
+                  </button>
+                  <button onClick={() => updateStatus(b.id, 'in-progress')} 
+                    className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600">
+                    In Progress
+                  </button>
+                  <button onClick={() => updateStatus(b.id, 'completed')} 
+                    className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600">
+                    Completed
+                  </button>
+                  <button onClick={() => deleteBooking(b.id)} 
+                    className="bg-red-500 text-white px-3 py-1 rounded text-sm ml-auto hover:bg-red-600">
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<AdminDashboard />);
+    </script>
+</body>
+</html>
